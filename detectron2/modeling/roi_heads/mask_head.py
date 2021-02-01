@@ -280,6 +280,9 @@ class MaskRCNNConvUpsampleHead(BaseMaskRCNNHead, nn.Sequential):
             x = layer(x)
         return x
 
+    def convert_to_sequential(self):
+        return torch.nn.Sequential(*[layer for layer in self])
+
 
 def build_mask_head(cfg, input_shape):
     """

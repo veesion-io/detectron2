@@ -41,8 +41,6 @@ class GeneralizedRCNN(nn.Module):
         pixel_std: Tuple[float],
         input_format: Optional[str] = None,
         vis_period: int = 0,
-        tensorrt_backend: Optional[bool] = False,
-        dir_path: Optional[str] = "",
     ):
         """
         NOTE: this interface is experimental.
@@ -75,7 +73,7 @@ class GeneralizedRCNN(nn.Module):
     @classmethod
     def from_config(cls, cfg):
         backbone = build_backbone(cfg)
-        parameters_dict = {
+        return {
             "backbone": backbone,
             "proposal_generator": build_proposal_generator(
                 cfg, backbone.output_shape()
@@ -86,24 +84,6 @@ class GeneralizedRCNN(nn.Module):
             "pixel_mean": cfg.MODEL.PIXEL_MEAN,
             "pixel_std": cfg.MODEL.PIXEL_STD,
         }
-        if cfg.tensorrt_backend:
-            parameters_dict["backbone"] = TRTModel(
-                os.path.join(cfg.dir_path, "weights/densepose_backbone.trt")
-            )
-            parameters_dict["proposal_generator"].rpn_head = TRTModel(
-                os.path.join(cfg.dir_path, "weights/densepose_rpn_head.trt")
-            )
-            parameters_dict["roi_heads"].box_head = TRTModel(
-                os.path.join(cfg.dir_path, "weights/densepose_box_head.trt")
-            )
-            parameters_dict["roi_heads"].box_predictor = TRTModel(
-                os.path.join(cfg.dir_path, "weights/densepose_box_predictor.trt")
-            )
-            parameters_dict["roi_heads"].mask_head.tensorrt_model = TRTModel(
-                os.path.join(cfg.dir_path, "weights/densepose_mask_head.trt")
-            )
-
-        return parameters_dict
 
     @property
     def device(self):

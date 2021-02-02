@@ -59,27 +59,8 @@ class GeneralizedRCNN(nn.Module):
         """
         super().__init__()
         self.backbone = backbone
-        if tensorrt_backend:
-            self.backbone = TRTModel(
-                os.path.join(dir_path, "weights/densepose_backbone.trt")
-            )
         self.proposal_generator = proposal_generator
-        if tensorrt_backend:
-            self.proposal_generator.rpn_head = TRTModel(
-                os.path.join(dir_path, "weights/densepose_rpn_head.trt")
-            )
         self.roi_heads = roi_heads
-        if tensorrt_backend:
-            self.roi_heads.box_head = TRTModel(
-                os.path.join(dir_path, "weights/densepose_box_head.trt")
-            )
-            self.roi_heads.box_predictor = TRTModel(
-                os.path.join(dir_path, "weights/densepose_box_predictor.trt")
-            )
-            self.roi_heads.mask_head.tensorrt_model = TRTModel(
-                os.path.join(dir_path, "weights/densepose_mask_head.trt")
-            )
-
         self.input_format = input_format
         self.vis_period = vis_period
         if vis_period > 0:
@@ -94,15 +75,35 @@ class GeneralizedRCNN(nn.Module):
     @classmethod
     def from_config(cls, cfg):
         backbone = build_backbone(cfg)
-        return {
+        parameters_dict = {
             "backbone": backbone,
-            "proposal_generator": build_proposal_generator(cfg, backbone.output_shape()),
+            "proposal_generator": build_proposal_generator(
+                cfg, backbone.output_shape()
+            ),
             "roi_heads": build_roi_heads(cfg, backbone.output_shape()),
             "input_format": cfg.INPUT.FORMAT,
             "vis_period": cfg.VIS_PERIOD,
             "pixel_mean": cfg.MODEL.PIXEL_MEAN,
             "pixel_std": cfg.MODEL.PIXEL_STD,
         }
+        if cfg.tensorrt_backend:
+            parameters_dict["backbone"] = TRTModel(
+                os.path.join(cfg.dir_path, "weights/densepose_backbone.trt")
+            )
+            parameters_dict["proposal_generator"].rpn_head = TRTModel(
+                os.path.join(cfg.dir_path, "weights/densepose_rpn_head.trt")
+            )
+            parameters_dict["roi_heads"].box_head = TRTModel(
+                os.path.join(cfg.dir_path, "weights/densepose_box_head.trt")
+            )
+            parameters_dict["roi_heads"].box_predictor = TRTModel(
+                os.path.join(cfg.dir_path, "weights/densepose_box_predictor.trt")
+            )
+            parameters_dict["roi_heads"].mask_head.tensorrt_model = TRTModel(
+                os.path.join(cfg.dir_path, "weights/densepose_mask_head.trt")
+            )
+
+        return parameters_dict
 
     @property
     def device(self):

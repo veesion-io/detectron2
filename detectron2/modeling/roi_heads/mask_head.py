@@ -276,6 +276,9 @@ class MaskRCNNConvUpsampleHead(BaseMaskRCNNHead, nn.Sequential):
         return ret
 
     def layers(self, x):
+        if hasattr(self, "tensorrt_model"):
+            x = self.tensorrt_model(x)
+            return x
         for layer in self:
             x = layer(x)
         return x

@@ -16,6 +16,7 @@ from ..postprocessing import detector_postprocess
 from ..proposal_generator import build_proposal_generator
 from ..roi_heads import build_roi_heads
 from .build import META_ARCH_REGISTRY
+from algorithmes.product.inference.tensorrt_utils.torch_backend import TRTModel
 
 __all__ = ["GeneralizedRCNN", "ProposalNetwork"]
 
@@ -40,6 +41,8 @@ class GeneralizedRCNN(nn.Module):
         pixel_std: Tuple[float],
         input_format: Optional[str] = None,
         vis_period: int = 0,
+        tensorrt_backend: Optional[bool] = False,
+        dir_path: Optional[str] = "",
     ):
         """
         NOTE: this interface is experimental.
@@ -56,8 +59,26 @@ class GeneralizedRCNN(nn.Module):
         """
         super().__init__()
         self.backbone = backbone
+        if tensorrt_backend:
+            self.backbone = TRTModel(
+                os.path.join(dir_path, "weights/densepose_backbone.trt")
+            )
         self.proposal_generator = proposal_generator
+        if tensorrt_backend:
+            self.proposal_generator.rpn_head = TRTModel(
+                os.path.join(dir_path, "weights/densepose_rpn_head.trt")
+            )
         self.roi_heads = roi_heads
+        if tensorrt_backend:
+            self.roi_heads.box_head = TRTModel(
+                os.path.join(dir_path, "weights/densepose_box_head.trt")
+            )
+            self.roi_heads.box_predictor = TRTModel(
+                os.path.join(dir_path, "weights/densepose_box_predictor.trt")
+            )
+            self.roi_heads.mask_head.tensorrt_model = TRTModel(
+                os.path.join(dir_path, "weights/densepose_mask_head.trt")
+            )
 
         self.input_format = input_format
         self.vis_period = vis_period

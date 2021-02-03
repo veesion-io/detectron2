@@ -742,10 +742,18 @@ class StandardROIHeads(ROIHeads):
             In training, a dict of losses.
             In inference, a list of `Instances`, the predicted instances.
         """
-        features = [features[f] for f in self.box_in_features]
+        if isinstance(features, dict):
+            features = [features[f] for f in self.box_in_features]
+        else:
+            features = features[:4][::-1]
+            features = [feature.float() for feature in features]
+            for i in range(len(proposals)):
+                proposals[i].proposal_boxes.tensor=proposals[i].proposal_boxes.tensor.float()
         box_features = self.box_pooler(features, [x.proposal_boxes for x in proposals])
         box_features = self.box_head(box_features)
-        predictions = self.box_predictor(box_features)
+        if isinstance(box_features, list):
+            box_features = box_features[0]
+        predictions = self.box_predictor(box_features.float())
         del box_features
 
         if self.training:
@@ -788,7 +796,12 @@ class StandardROIHeads(ROIHeads):
             instances, _ = select_foreground_proposals(instances, self.num_classes)
 
         if self.mask_pooler is not None:
-            features = [features[f] for f in self.mask_in_features]
+            if isinstance(features, dict):
+                features = [features[f] for f in self.mask_in_features]
+            else:
+                features = features[:4][::-1]
+                features = [feature.float() for feature in features]
+
             boxes = [x.proposal_boxes if self.training else x.pred_boxes for x in instances]
             features = self.mask_pooler(features, boxes)
         else:

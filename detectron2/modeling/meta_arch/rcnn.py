@@ -4,7 +4,7 @@ import numpy as np
 from typing import Optional, Tuple
 import torch
 from torch import nn
-
+import os
 from detectron2.config import configurable
 from detectron2.data.detection_utils import convert_image_to_rgb
 from detectron2.structures import ImageList
@@ -196,6 +196,10 @@ class GeneralizedRCNN(nn.Module):
         images = self.preprocess_image(batched_inputs)
         features = self.backbone(images.tensor)
 
+        if not isinstance(features, dict):
+            for i, feature in enumerate(features):
+                if len(feature) == 1:
+                    features[i]=features[i][0]
         if detected_instances is None:
             if self.proposal_generator:
                 proposals, _ = self.proposal_generator(images, features, None)

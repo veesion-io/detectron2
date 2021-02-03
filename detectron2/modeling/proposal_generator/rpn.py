@@ -419,7 +419,10 @@ class RPN(nn.Module):
             proposals: list[Instances]: contains fields "proposal_boxes", "objectness_logits"
             loss: dict[Tensor] or None
         """
-        features = [features[f] for f in self.in_features]
+        if isinstance(features, dict):
+            features = [features[f] for f in self.in_features]
+        else:
+            features = [features[i] for i in [3, 2, 1, 0, 4]]
         anchors = self.anchor_generator(features)
 
         pred_objectness_logits, pred_anchor_deltas = self.rpn_head(features)

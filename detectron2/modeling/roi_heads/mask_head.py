@@ -187,6 +187,8 @@ class BaseMaskRCNNHead(nn.Module):
             A dict of losses in training. The predicted "instances" in inference.
         """
         x = self.layers(x)
+        if isinstance(x, list):
+            x = x[0]
         if self.training:
             return {"loss_mask": mask_rcnn_loss(x, instances, self.vis_period)}
         else:
@@ -276,6 +278,9 @@ class MaskRCNNConvUpsampleHead(BaseMaskRCNNHead, nn.Sequential):
         return ret
 
     def layers(self, x):
+        if hasattr(self, "tensorrt_model"):
+            x = self.tensorrt_model(x)
+            return x
         for layer in self:
             x = layer(x)
         return x

@@ -420,18 +420,23 @@ class RPN(nn.Module):
             loss: dict[Tensor] or None
         """
         if isinstance(features, dict):
+            print(len(features), self.in_features)
             features = [features[f] for f in self.in_features]
         else:
             features = [features[i] for i in [3, 2, 1, 0, 4]]
+        print("rpn len(features)", len(features), "len(features[0])", len(features[0]), "all sizes", list(map(lambda x:x.size(), features)))
         anchors = self.anchor_generator(features)
+        print("all anchors", list(map(lambda x:x.tensor.size(), anchors)))
 
         pred_objectness_logits, pred_anchor_deltas = self.rpn_head(features)
+        print("pred_objectness_logits", list(map(lambda x:x.size(), pred_objectness_logits)))
         # Transpose the Hi*Wi*A dimension to the middle:
         pred_objectness_logits = [
             # (N, A, Hi, Wi) -> (N, Hi, Wi, A) -> (N, Hi*Wi*A)
             score.permute(0, 2, 3, 1).flatten(1)
             for score in pred_objectness_logits
         ]
+        print("pred_anchor_deltas", list(map(lambda x:x.size(), pred_anchor_deltas)))
         pred_anchor_deltas = [
             # (N, A*B, Hi, Wi) -> (N, A, B, Hi, Wi) -> (N, Hi, Wi, A, B) -> (N, Hi*Wi*A, B)
             x.view(x.shape[0], -1, self.anchor_generator.box_dim, x.shape[-2], x.shape[-1])
@@ -439,7 +444,7 @@ class RPN(nn.Module):
             .flatten(1, -2)
             for x in pred_anchor_deltas
         ]
-
+        print("pred_anchor_deltas reshaped", list(map(lambda x:x.size(), pred_anchor_deltas)))
         if self.training:
             assert gt_instances is not None, "RPN requires gt_instances in training!"
             gt_labels, gt_boxes = self.label_and_sample_anchors(anchors, gt_instances)
@@ -497,6 +502,8 @@ class RPN(nn.Module):
         proposals = []
         # For each feature map
         for anchors_i, pred_anchor_deltas_i in zip(anchors, pred_anchor_deltas):
+            print("pred_anchor_deltas_i.size", pred_anchor_deltas_i.size())
+            print("anchors_i", anchors_i.tensor.size())
             B = anchors_i.tensor.size(1)
             pred_anchor_deltas_i = pred_anchor_deltas_i.reshape(-1, B)
             # Expand anchors to shape (N*Hi*Wi*A, B)

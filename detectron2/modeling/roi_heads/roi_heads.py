@@ -742,6 +742,7 @@ class StandardROIHeads(ROIHeads):
             In training, a dict of losses.
             In inference, a list of `Instances`, the predicted instances.
         """
+        print("self.box_in_features", self.box_in_features, "len(features)", len(features))
         if isinstance(features, dict):
             features = [features[f] for f in self.box_in_features]
         else:
@@ -749,10 +750,12 @@ class StandardROIHeads(ROIHeads):
             features = [feature.float() for feature in features]
             for i in range(len(proposals)):
                 proposals[i].proposal_boxes.tensor=proposals[i].proposal_boxes.tensor.float()
+        print("roi_head features", list(map(lambda x:x.size(), features)))
         box_features = self.box_pooler(features, [x.proposal_boxes for x in proposals])
         box_features = self.box_head(box_features)
         if isinstance(box_features, list):
             box_features = box_features[0]
+        print("roi_head, box features, length", box_features.size())
         predictions = self.box_predictor(box_features.float())
         del box_features
 
@@ -768,6 +771,8 @@ class StandardROIHeads(ROIHeads):
                         proposals_per_image.proposal_boxes = Boxes(pred_boxes_per_image)
             return losses
         else:
+            print("roi_head predictions", list(map(lambda x:x.size(), predictions)))
+            print("roi_head proposals", list(map(lambda x:x.proposal_boxes.tensor.size(), proposals)))
             pred_instances, _ = self.box_predictor.inference(predictions, proposals)
             return pred_instances
 
@@ -796,6 +801,7 @@ class StandardROIHeads(ROIHeads):
             instances, _ = select_foreground_proposals(instances, self.num_classes)
 
         if self.mask_pooler is not None:
+            print("forward_mask, mask_infeatures", self.mask_in_features, "features", len(features))
             if isinstance(features, dict):
                 features = [features[f] for f in self.mask_in_features]
             else:

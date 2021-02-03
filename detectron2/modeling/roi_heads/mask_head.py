@@ -189,6 +189,7 @@ class BaseMaskRCNNHead(nn.Module):
         x = self.layers(x)
         if isinstance(x, list):
             x = x[0]
+        print("mask_head x", x.size())
         if self.training:
             return {"loss_mask": mask_rcnn_loss(x, instances, self.vis_period)}
         else:

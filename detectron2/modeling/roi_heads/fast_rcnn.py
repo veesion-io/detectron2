@@ -92,6 +92,10 @@ def fast_rcnn_inference_single_image(
     Returns:
         Same as `fast_rcnn_inference`, but for only one image.
     """
+    if isinstance(score_thesh, list):
+        score_thresh = score_thresh[0]
+        nms_thresh = nms_thresh[0]
+        topk_per_image = topk_per_image[0] 
     valid_mask = torch.isfinite(boxes).all(dim=1) & torch.isfinite(scores).all(dim=1)
     if not valid_mask.all():
         boxes = boxes[valid_mask]

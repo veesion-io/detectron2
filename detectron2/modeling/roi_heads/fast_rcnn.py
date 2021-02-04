@@ -483,6 +483,8 @@ class FastRCNNOutputLayers(nn.Module):
             list[Instances]: same as `fast_rcnn_inference`.
             list[Tensor]: same as `fast_rcnn_inference`.
         """
+        if isinstance(proposals[0], dict):
+            proposals = [Instances(proposal) for proposal in proposals]
         boxes = self.predict_boxes(predictions, proposals)
         scores = self.predict_probs(predictions, proposals)
         image_shapes = [x.image_size for x in proposals]

@@ -96,6 +96,7 @@ def fast_rcnn_inference_single_image(
         score_thresh = score_thresh[0]
         nms_thresh = nms_thresh[0]
         topk_per_image = topk_per_image[0] 
+    #print("fast_rcnn_inference_single_image", boxes.size(), scores.size(), image_shape, score_thresh, nms_thresh, topk_per_image)
     valid_mask = torch.isfinite(boxes).all(dim=1) & torch.isfinite(scores).all(dim=1)
     if not valid_mask.all():
         boxes = boxes[valid_mask]
@@ -487,12 +488,18 @@ class FastRCNNOutputLayers(nn.Module):
             list[Instances]: same as `fast_rcnn_inference`.
             list[Tensor]: same as `fast_rcnn_inference`.
         """
+        import time
+        t1 = time.time()
         if isinstance(proposals[0], dict):
             proposals = [Instances(proposal) for proposal in proposals]
         boxes = self.predict_boxes(predictions, proposals)
+        print("predict_boxes", time.time() - t1)
+        t1 = time.time()
         scores = self.predict_probs(predictions, proposals)
+        print("predict_probs", time.time() - t1)
+        t1 = time.time()
         image_shapes = [x.image_size for x in proposals]
-        return fast_rcnn_inference(
+        r = fast_rcnn_inference(
             boxes,
             scores,
             image_shapes,
@@ -500,6 +507,9 @@ class FastRCNNOutputLayers(nn.Module):
             self.test_nms_thresh,
             self.test_topk_per_image,
         )
+        print("fast_rcnn_inference", time.time() - t1)
+        t1 = time.time()
+        return r
 
     def predict_boxes_for_gt_classes(self, predictions, proposals):
         """

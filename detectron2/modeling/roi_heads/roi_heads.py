@@ -784,7 +784,16 @@ class StandardROIHeads(ROIHeads):
                         proposals_per_image.proposal_boxes = Boxes(pred_boxes_per_image)
             return losses
         else:
-            pred_instances, _ = self.box_predictor.inference(predictions, proposals)
+            print("box_predictor_inference predictions", list(map(lambda x:x.size(), predictions)))
+            print("proposals", len(proposals), proposals[0])
+            #print("box_predictor_inference proposals", list(map(lambda x:x.size(), proposals)))
+            #import pickle
+            #with open("/veesion/proposals.pkl", "wb") as f:
+            #    pickle.dump(proposals, f)
+            if hasattr(self.box_predictor, "infernece"):
+                pred_instances, _ = self.box_predictor.inference(predictions, proposals)
+            else:
+                pred_instances, _ = self.inference_box_predictor([predictions, proposals])
             print("box predictor inference", time.time()-t1)
             t1=time.time()
             return pred_instances

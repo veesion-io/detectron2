@@ -90,7 +90,7 @@ def paste_masks_in_image(masks, boxes, image_shape, threshold=0.5):
         number of detected object instances and Himage, Wimage are the image width
         and height. img_masks[i] is a binary mask for object instance i.
     """
-
+    print("paste_masks_in_image", masks.size(), boxes.size(), image_shape, threshold)
     assert masks.shape[-1] == masks.shape[-2], "Only square mask predictions are supported"
     N = len(masks)
     if N == 0:

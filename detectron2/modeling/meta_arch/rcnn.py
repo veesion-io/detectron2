@@ -192,10 +192,12 @@ class GeneralizedRCNN(nn.Module):
             same as in :meth:`forward`.
         """
         assert not self.training
-
+        import time
+        t1 = time.time()
         images = self.preprocess_image(batched_inputs)
         features = self.backbone(images.tensor)
-
+        #print("backbone", time.time()-t1)
+        t1=time.time()
         if not isinstance(features, dict):
             for i, feature in enumerate(features):
                 if len(feature) == 1:
@@ -203,17 +205,26 @@ class GeneralizedRCNN(nn.Module):
         if detected_instances is None:
             if self.proposal_generator:
                 proposals, _ = self.proposal_generator(images, features, None)
+                #print("proposal generator", time.time()-t1)
+                t1=time.time()
             else:
                 assert "proposals" in batched_inputs[0]
                 proposals = [x["proposals"].to(self.device) for x in batched_inputs]
-
+                
             results, _ = self.roi_heads(images, features, proposals, None)
+            #print("roi_head", time.time()-t1)
+            t1=time.time()
         else:
             detected_instances = [x.to(self.device) for x in detected_instances]
             results = self.roi_heads.forward_with_given_boxes(features, detected_instances)
 
+        #print("proposal and head", time.time()-t1)
+        t1=time.time()
         if do_postprocess:
-            return GeneralizedRCNN._postprocess(results, batched_inputs, images.image_sizes)
+            r = GeneralizedRCNN._postprocess(results, batched_inputs, images.image_sizes)
+            #print("postprocess", time.time()-t1)
+            t1=time.time()
+            return r
         else:
             return results
 

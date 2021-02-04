@@ -690,10 +690,15 @@ class StandardROIHeads(ROIHeads):
             losses.update(self._forward_keypoint(features, proposals))
             return proposals, losses
         else:
+            import time
+            t1=time.time()
             pred_instances = self._forward_box(features, proposals)
+            #print("forward_box", time.time()-t1)
+            t1=time.time()
             # During inference cascaded prediction is used: the mask and keypoints heads are only
             # applied to the top scoring box detections.
             pred_instances = self.forward_with_given_boxes(features, pred_instances)
+            #print("forward_with_given_boxes", time.time()-t1)
             return pred_instances, {}
 
     def forward_with_given_boxes(
@@ -742,6 +747,8 @@ class StandardROIHeads(ROIHeads):
             In training, a dict of losses.
             In inference, a list of `Instances`, the predicted instances.
         """
+        import time
+        t1=time.time()
         if isinstance(features, dict):
             features = [features[f] for f in self.box_in_features]
         else:
@@ -749,11 +756,20 @@ class StandardROIHeads(ROIHeads):
             features = [feature.float() for feature in features]
             for i in range(len(proposals)):
                 proposals[i].proposal_boxes.tensor=proposals[i].proposal_boxes.tensor.float()
+        print("type conversion", time.time()-t1)
+        t1=time.time()
+        
         box_features = self.box_pooler(features, [x.proposal_boxes for x in proposals])
+        print("box pooling", time.time()-t1)
+        t1=time.time()
         box_features = self.box_head(box_features)
+        print("box head", time.time()-t1)
+        t1=time.time()
         if isinstance(box_features, list):
             box_features = box_features[0]
         predictions = self.box_predictor(box_features.float())
+        print("box predictor", time.time()-t1)
+        t1=time.time()
         del box_features
 
         if self.training:
@@ -769,6 +785,8 @@ class StandardROIHeads(ROIHeads):
             return losses
         else:
             pred_instances, _ = self.box_predictor.inference(predictions, proposals)
+            print("box predictor inference", time.time()-t1)
+            t1=time.time()
             return pred_instances
 
     def _forward_mask(
@@ -788,13 +806,15 @@ class StandardROIHeads(ROIHeads):
             In training, a dict of losses.
             In inference, update `instances` with new fields "pred_masks" and return it.
         """
+        import time
+        t1=time.time()
         if not self.mask_on:
             return {} if self.training else instances
 
         if self.training:
             # head is only trained on positive proposals.
             instances, _ = select_foreground_proposals(instances, self.num_classes)
-
+            
         if self.mask_pooler is not None:
             if isinstance(features, dict):
                 features = [features[f] for f in self.mask_in_features]
@@ -806,8 +826,11 @@ class StandardROIHeads(ROIHeads):
             features = self.mask_pooler(features, boxes)
         else:
             features = {f: features[f] for f in self.mask_in_features}
-        return self.mask_head(features, instances)
-
+        #print("mask pooling", time.time()-t1)
+        t1=time.time()
+        r = self.mask_head(features, instances)
+        #print("mask head", time.time()-t1)
+        return r
     def _forward_keypoint(
         self, features: Dict[str, torch.Tensor], instances: List[Instances]
     ) -> Union[Dict[str, torch.Tensor], List[Instances]]:

@@ -48,6 +48,8 @@ def find_top_rpn_proposals(
             stores post_nms_topk object proposals for image i, sorted by their
             objectness score in descending order.
     """
+    import time
+    t1 = time.time()
     num_images = len(image_sizes)
     device = proposals[0].device
 
@@ -72,15 +74,18 @@ def find_top_rpn_proposals(
         topk_proposals.append(topk_proposals_i)
         topk_scores.append(topk_scores_i)
         level_ids.append(torch.full((num_proposals_i,), level_id, dtype=torch.int64, device=device))
-
+    #print("1.", time.time()-t1)
+    t1=time.time()
     # 2. Concat all levels together
     topk_scores = cat(topk_scores, dim=1)
     topk_proposals = cat(topk_proposals, dim=1)
     level_ids = cat(level_ids, dim=0)
-
+    #print("2.", time.time()-t1)
+    t1=time.time()
     # 3. For each image, run a per-level NMS, and choose topk results.
     results: List[Instances] = []
     for n, image_size in enumerate(image_sizes):
+        t1 = time.time()
         boxes = Boxes(topk_proposals[n])
         scores_per_img = topk_scores[n]
         lvl = level_ids
@@ -95,13 +100,20 @@ def find_top_rpn_proposals(
             scores_per_img = scores_per_img[valid_mask]
             lvl = lvl[valid_mask]
         boxes.clip(image_size)
+        #print("valid mask computing", time.time()-t1)
+        t1=time.time()
 
         # filter empty boxes
         keep = boxes.nonempty(threshold=min_box_size)
         if keep.sum().item() != len(boxes):
             boxes, scores_per_img, lvl = boxes[keep], scores_per_img[keep], lvl[keep]
-
+        #print("filter empty boxes", time.time()-t1)
+        t1=time.time()
+    
         keep = batched_nms(boxes.tensor, scores_per_img, lvl, nms_thresh)
+        #print("batched_nms", time.time()-t1)
+        t1=time.time()
+
         # In Detectron1, there was different behavior during training vs. testing.
         # (https://github.com/facebookresearch/Detectron/issues/459)
         # During training, topk is over the proposals from *all* images in the training batch.
@@ -115,6 +127,10 @@ def find_top_rpn_proposals(
         res.proposal_boxes = boxes[keep]
         res.objectness_logits = scores_per_img[keep]
         results.append(res)
+        #print("selection", time.time()-t1)
+        t1=time.time()
+
+    #print("3", time.time()-t1)
     return results
 
 

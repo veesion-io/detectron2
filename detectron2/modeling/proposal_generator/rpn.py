@@ -419,13 +419,18 @@ class RPN(nn.Module):
             proposals: list[Instances]: contains fields "proposal_boxes", "objectness_logits"
             loss: dict[Tensor] or None
         """
+        import time
+        t1=time.time()
         if isinstance(features, dict):
             features = [features[f] for f in self.in_features]
         else:
             features = [features[i] for i in [3, 2, 1, 0, 4]]
         anchors = self.anchor_generator(features)
-
+        #print("anchor_generator", time.time()-t1)
+        t1=time.time()
         pred_objectness_logits, pred_anchor_deltas = self.rpn_head(features)
+        #print("rpn head", time.time()-t1)
+        t1=time.time()
         # Transpose the Hi*Wi*A dimension to the middle:
         pred_objectness_logits = [
             # (N, A, Hi, Wi) -> (N, Hi, Wi, A) -> (N, Hi*Wi*A)
@@ -439,7 +444,8 @@ class RPN(nn.Module):
             .flatten(1, -2)
             for x in pred_anchor_deltas
         ]
-
+        #print("results reshaping", time.time()-t1)
+        t1=time.time()
         if self.training:
             assert gt_instances is not None, "RPN requires gt_instances in training!"
             gt_labels, gt_boxes = self.label_and_sample_anchors(anchors, gt_instances)
@@ -451,6 +457,8 @@ class RPN(nn.Module):
         proposals = self.predict_proposals(
             anchors, pred_objectness_logits, pred_anchor_deltas, images.image_sizes
         )
+        #print("proposal predict", time.time()-t1)
+        t1=time.time()
         return proposals, losses
 
     def predict_proposals(
@@ -472,9 +480,14 @@ class RPN(nn.Module):
         # The proposals are treated as fixed for joint training with roi heads.
         # This approach ignores the derivative w.r.t. the proposal boxes’ coordinates that
         # are also network responses.
+        import time
+        t1=time.time()
         with torch.no_grad():
             pred_proposals = self._decode_proposals(anchors, pred_anchor_deltas)
-            return find_top_rpn_proposals(
+            #print("decode proposals", time.time()-t1)
+            t1=time.time()
+            
+            r = find_top_rpn_proposals(
                 pred_proposals,
                 pred_objectness_logits,
                 image_sizes,
@@ -484,6 +497,8 @@ class RPN(nn.Module):
                 self.min_box_size,
                 self.training,
             )
+            #print("find_top_rpn_proposals", time.time()-t1)
+            return r
 
     def _decode_proposals(self, anchors: List[Boxes], pred_anchor_deltas: List[torch.Tensor]):
         """
